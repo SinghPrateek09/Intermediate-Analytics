@@ -1,0 +1,410 @@
+<FONT SIZE=4, COLOR="#8272E9"><CENTER><B>
+<P>
+Mohan , Sagar, Prateek
+<BR>
+ALY6015 - Intermediate Analytics
+<BR>
+Northeastern University
+<BR>
+Dr. Ji-Young Yun
+<BR>
+Date of submission: February 2021
+<BR>
+Module 1
+</CENTER>
+</FONT>
+</B>
+
+<h3> <b>Introduction: <b></h3>
+```{r}
+install.packages("ggcorrplot")
+
+install.packages("ggplot2")
+```
+
+
+```{r}
+library("ggpubr")
+library("readxl")
+library("dplyr")
+library("readr")
+library("knitr")
+library("kableExtra")
+library("tidyverse")
+library("vcd")
+library("lessR")
+library("RColorBrewer")
+library(lattice)
+library("corrplot")
+library(Hmisc)
+library("ggplot2")
+library(ggcorrplot)
+library("car")
+library("caret")
+library("ggplot2")
+library(gridExtra)
+library("zoo")
+library("ISLR")
+library(pROC)
+
+library(tidyverse)
+library(nnet)
+library(car)
+
+```
+
+
+```{r}
+rawdata = read_csv("../Intermediate Analytics/DeAP (1).csv")
+
+rawdata
+
+```
+
+
+
+
+```{r}
+glimpse(rawdata)
+```
+
+
+```{r}
+colnames(rawdata)
+```
+
+# Removing the unnecessary columns from the data.
+
+```{r}
+
+drop_cols = c("StartDate" ,"EndDate" ,"Status" , "IPAddress" ,"Progress", "Duration (in seconds)","Finished","RecordedDate","ResponseId", "RecipientLastName",  "RecipientFirstName","RecipientEmail","ExternalReference" ,"LocationLatitude" ,"LocationLongitude","DistributionChannel","UserLanguage")
+
+sorted_data = rawdata[,!names(rawdata)%in%drop_cols]                
+sorted_data
+
+```
+
+#Renaming the column names into an meaningful variables
+
+```{r}
+colnames(sorted_data) = c("gender","age","profession","other","avgworkhour","sleep","activity","labour/sittingjob","spare_time","screentime","height","weight","hobbies",
+                          "steps","waterintake","depression","sleep_disorder","smoking","drinking")
+```
+
+```{r}
+head(sorted_data)
+tail(sorted_data)
+```
+#Finding and  Handling Nans 
+
+
+```{r}
+null_count = data.frame(map(sorted_data, ~sum(is.na(.))))
+
+
+a =apply(null_count[,-1],1,function(x) names(null_count[,-1])[which(x>0)])
+
+t(null_count[a[,]])
+```
+
+From the above output we can see that other column has majority of nulls so we drop the "other" column.
+
+```{r}
+drop_cols = c("other")
+sorted_data = sorted_data[,!names(sorted_data)%in%drop_cols]                
+head(sorted_data)
+```
+# removing the first two rows in all columns as the data is messy
+
+
+```{r}
+sorted_data = sorted_data %>% slice(-c(1,2))
+```
+
+```{r}
+sorted_data
+```
+
+
+```{r}
+clean_data = na.omit(sorted_data)
+clean_data
+```
+
+#duplicate values in the dataset
+
+```{r}
+
+cat("Total number of duplicates in the dataset are",sum(duplicated(clean_data)))
+```
+
+# cleaning unformatted data 
+```{r}
+library(tidyr)
+
+#df <- data.frame(clean_data = c("height"))
+
+clean_data$height <- as.integer(gsub('[a-zA-Z]', '', clean_data$height))
+
+head(clean_data)
+```
+
+```{r}
+head(clean_data)
+```
+
+# changing the datatypes of the numerical values
+```{r}
+numerical_cols = c( "age","avgworkhour","sleep","screentime","height","weight", "steps","waterintake") 
+
+clean_data[, c( "age","avgworkhour","sleep","screentime","height","weight", "steps","waterintake")] <- sapply(clean_data[, c( "age","avgworkhour","sleep","screentime","height","weight", "steps","waterintake")], as.numeric)
+
+```
+
+
+
+
+
+#We are picking five random numerical values and analysing them.
+```{r}
+numerical_analysis = matrix(c(summary(clean_data$steps),summary(clean_data$screentime),summary(clean_data$age),summary(clean_data$avgworkhour),summary(clean_data$sleep),summary(clean_data$weight),summary(clean_data$height),summary(clean_data$waterintake)),nrow = 8, byrow = TRUE)
+rownames(numerical_analysis) = c("Steps","Screen Time","Age","Avg Work Hour","Sleep", "Weight","Height","Water Intake")
+colnames(numerical_analysis) = c("Minimum","1st","Median","Mean","3rd Quartile","Maximum")
+
+kable(x = numerical_analysis, format = 'html',
+      caption = "Summary of  DeAP data") %>%
+   kable_material_dark(html_font = "Cambria") %>%
+  kable_styling(font_size = 15) %>%
+gsub("font-size: initial !important;",
+"font-size: 10 pt !important;",
+.)%>%
+row_spec(0, bold = TRUE, color = "#33FFE3", background = "#581845", font_size = 14) %>%
+column_spec(1, bold = TRUE, border_right = TRUE, color = "#810033", background = "#DAF7A6") 
+
+
+```
+
+#outlier detection:
+
+```{r}
+a = boxplot(clean_data$sleep, main="sleep",
+    ylab="Sleep time in hours", col="green",
+border="blue")
+
+boxplot
+```
+
+```{r}
+a = boxplot(clean_data$screentime, main="sleep",
+    ylab="Sleep time in hours", col="green",
+border="blue")
+
+a$out
+
+```
+
+```{r}
+
+
+
+counts <- table(clean_data$depression)
+
+x= barplot(counts,
+        main="Analysis of dependant variable in the dataset",
+        xlab="Depression ? ", ylab="Frequency",col=brewer.pal(5,"Set1"),border="white",
+ylim=c(0,20))
+text(x,counts+2,labels = as.character(counts))
+
+        
+```
+```{r}
+#x <- table(na.omit(data_cat$Alley))
+x <- table(clean_data$depression)
+PieChart(x, hole = 0, values = "%", main = "Analysis of  dependant variable (depression) in the dataset ")
+```
+
+
+
+
+#
+```{r}
+dat <- data.frame(table(clean_data$smoking,clean_data$depression))
+names(dat) <- c("smoking","depression","Count")
+
+ggplot(data=dat, aes(x=depression, y=Count, fill=smoking)) + geom_bar(stat="identity")
+
+
+
+
+```
+
+```{r}
+dat <- data.frame(table(clean_data$drinking,clean_data$depression))
+names(dat) <- c("drinking","depression","Count")
+
+ggplot(data=dat, aes(x=depression, y=Count, fill=drinking)) + geom_bar(stat="identity")
+
+
+
+```
+```{r}
+p <- ggplot(clean_data, aes(x=depression, y=screentime, fill=depression)) + # fill=name allow to automatically dedicate a color for each group
+  geom_violin()
+p
+```
+
+
+# total steps vs depression
+```{r}
+boxplot(steps~depression,
+data=clean_data,
+main="Different boxplots for each type of Depression",
+xlab="depression",
+ylab=" total steps per day",
+col="maroon",
+border="blue"
+)
+```
+
+
+```{r}
+clean_data$depression <- as.factor(clean_data$depression)
+clean_data$sleep_disorder <- as.factor(clean_data$sleep_disorder)
+#clean_data$profession <- as.factor(clean_data$profession)
+
+clean_data$depression <- relevel(clean_data$depression, "No") # Set Reference level to no response...
+clean_data$sleep_disorder<- relevel(clean_data$sleep_disorder, "No")
+#clean_data$profession = relevel(clean_data$profession, "Student")
+```
+
+# Split data into train and test sets
+
+```{r}
+set.seed(48)
+trainIndex = createDataPartition(clean_data$depression, p =0.70,list = FALSE)
+
+clean_data_train = clean_data[trainIndex,]
+clean_data_test  = clean_data[-trainIndex,]
+
+head(clean_data_train)
+```
+```{r}
+
+```
+
+# Running model with all predictors 
+```{r}
+
+Model1 <- multinom(depression ~ ., data = clean_data_train)
+```
+
+```{r}
+ a = summary(Model1)
+a
+```
+
+
+```{r}
+colnames(clean_data)
+```
+
+
+
+```{r warning=FALSE}
+model2 <- multinom(depression ~ gender + age + profession + avgworkhour + sleep + activity + spare_time + screentime + height + weight  + steps + waterintake  + sleep_disorder  + smoking + drinking   , data = clean_data_train)
+```
+
+
+
+```{r}
+ b = summary(model2)
+b
+```
+
+```{r}
+b $ call
+```
+
+```{r}
+model3 <- multinom(depression ~ age + avgworkhour + sleep + activity + screentime + weight  + steps + waterintake + sleep_disorder  + smoking + drinking   , data = clean_data_train)
+```
+
+
+```{r}
+c = summary(model3)
+c
+```
+
+
+
+#Confusion matrix
+
+
+
+
+
+
+```{r}
+#test set predictions
+
+predicted_value = predict(model3, newdata = clean_data_test)
+
+#predicted_classes_min = as.factor(ifelse(probabilites_test >= 0.05,"Yes", "No"))
+
+#confusionMatrix(predicted_classes_min,clean_data_test$depression, positive = 'Yes')
+
+expected_value = clean_data_test$depression
+
+model_conf =  confusionMatrix(data=predicted_value, reference = expected_value)
+
+```
+
+```{r}
+model_conf
+```
+```{r}
+clean_data_test$depression
+```
+```{r}
+predicted_value <- as.character(predicted_value)
+predicted_value[predicted_value == "Yes"] = 2      # Replace "Yes" by 2
+predicted_value[predicted_value == "Maybe"] = 1
+predicted_value[predicted_value == "No"] = 0
+#predicted_value_num <- as.numeric(predicted_value)
+
+predicted_value_num = c(2,0,1,0)
+expected_value_num = c(1,0,0,1)
+
+```
+
+
+```{r}
+model3_roc  = roc(expected_value_num, predicted_value_num)
+
+plot(model1_roc,col = "blue",ylab = "Sensitivity - TP Rate", xlab = "Specificity - FP Rate")
+```
+
+```{r}
+model3_auc  = auc(model3_roc)
+model3_auc
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
